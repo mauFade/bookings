@@ -10,21 +10,29 @@ import (
 )
 
 func routes(app *config.AppConfig) http.Handler {
-	r := chi.NewRouter()
+	mux := chi.NewRouter()
 
-	r.Use(middleware.Recoverer)
-	r.Use(NoSurf)
-	r.Use(SessionLoad)
+	mux.Use(middleware.Recoverer)
+	mux.Use(NoSurf)
+	mux.Use(SessionLoad)
 
-	r.Get("/", handler.Repo.Home)
-	r.Get("/about", handler.Repo.About)
-	r.Get("/generals-quarters", handler.Repo.Generals)
-	r.Get("/majors-suite", handler.Repo.Majors)
-	r.Get("/search-availability", handler.Repo.Availability)
-	r.Post("/search-availability", handler.Repo.PostAvailability)
-	r.Get("/contact", handler.Repo.Contact)
+	mux.Get("/", handler.Repo.Home)
+	mux.Get("/about", handler.Repo.About)
+	mux.Get("/generals-quarters", handler.Repo.Generals)
+	mux.Get("/majors-suite", handler.Repo.Majors)
+
+	mux.Get("/search-availability", handler.Repo.Availability)
+	mux.Post("/search-availability", handler.Repo.PostAvailability)
+	mux.Post("/search-availability-json", handler.Repo.AvailabilityJSON)
+
+	mux.Get("/contact", handler.Repo.Contact)
+
+	mux.Get("/make-reservation", handler.Repo.Reservation)
+	mux.Post("/make-reservation", handler.Repo.PostReservation)
+	mux.Get("/reservation-summary", handler.Repo.ReservationSummary)
 
 	fileServer := http.FileServer(http.Dir("./static/"))
-	r.Handle("/static/*", http.StripPrefix("/static", fileServer))
-	return r
+	mux.Handle("/static/*", http.StripPrefix("/static", fileServer))
+
+	return mux
 }

@@ -1,5 +1,7 @@
 package model
 
+import "github.com/mauFade/bookings/pkg/forms"
+
 type TemplateData struct {
 	StringMap map[string]string
 	IntMap    map[string]int
@@ -9,4 +11,5 @@ type TemplateData struct {
 	Error     string
 	Flash     string
 	Warning   string
+	Form      *forms.Form
 }
