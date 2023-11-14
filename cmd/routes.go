@@ -16,8 +16,13 @@ func routes(app *config.AppConfig) http.Handler {
 	r.Use(NoSurf)
 	r.Use(SessionLoad)
 
-	r.Get("/", http.HandlerFunc(handler.Repo.Home))
-	r.Get("/about", http.HandlerFunc(handler.Repo.About))
+	r.Get("/", handler.Repo.Home)
+	r.Get("/about", handler.Repo.About)
+	r.Get("/generals-quarters", handler.Repo.Generals)
+	r.Get("/majors-suite", handler.Repo.Majors)
+	r.Get("/search-availability", handler.Repo.Availability)
+	r.Post("/search-availability", handler.Repo.PostAvailability)
+	r.Get("/contact", handler.Repo.Contact)
 
 	fileServer := http.FileServer(http.Dir("./static/"))
 	r.Handle("/static/*", http.StripPrefix("/static", fileServer))

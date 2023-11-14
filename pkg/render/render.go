@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/justinas/nosurf"
 	model "github.com/mauFade/bookings/models"
 	"github.com/mauFade/bookings/pkg/config"
 )
@@ -23,7 +24,7 @@ func addDefaultData(templ *model.TemplateData) *model.TemplateData {
 	return templ
 }
 
-func RenderTemplate(response http.ResponseWriter, templ string, templData *model.TemplateData) {
+func RenderTemplate(response http.ResponseWriter, request *http.Request, templ string, templData *model.TemplateData) {
 	var templatesCache map[string]*template.Template
 	var err error
 
@@ -45,7 +46,7 @@ func RenderTemplate(response http.ResponseWriter, templ string, templData *model
 
 	buf := new(bytes.Buffer)
 
-	templData = addDefaultData(templData)
+	templData = AddDefaultData(templData, request)
 
 	_ = temp.Execute(buf, templData)
 
@@ -54,6 +55,12 @@ func RenderTemplate(response http.ResponseWriter, templ string, templData *model
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func AddDefaultData(td *model.TemplateData, r *http.Request) *model.TemplateData {
+	td.CSRFToken = nosurf.Token(r)
+
+	return td
 }
 
 func CreateTemplateCache() (map[string]*template.Template, error) {
