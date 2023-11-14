@@ -2,6 +2,7 @@ package render
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -14,89 +15,82 @@ import (
 
 var templateCache = make(map[string]*template.Template)
 
+var functions = template.FuncMap{}
+
 var app *config.AppConfig
 
 func NewTemplates(a *config.AppConfig) {
 	app = a
 }
 
-func addDefaultData(templ *model.TemplateData) *model.TemplateData {
-	return templ
+func AddDefaultData(td *model.TemplateData, r *http.Request) *model.TemplateData {
+	td.Flash = app.Session.PopString(r.Context(), "flash")
+	td.Warning = app.Session.PopString(r.Context(), "warning")
+	td.Error = app.Session.PopString(r.Context(), "error")
+	td.CSRFToken = nosurf.Token(r)
+	return td
 }
 
-func RenderTemplate(response http.ResponseWriter, request *http.Request, templ string, templData *model.TemplateData) {
-	var templatesCache map[string]*template.Template
-	var err error
+// RenderTemplate renders a template
+func RenderTemplate(w http.ResponseWriter, r *http.Request, tmpl string, td *model.TemplateData) {
+	var tc map[string]*template.Template
 
 	if app.UseCache {
-		templatesCache = app.TemplateCache
+		// get the template cache from the app config
+		tc = app.TemplateCache
 	} else {
-		templatesCache, err = CreateTemplateCache()
-
-		if err != nil {
-			log.Println(err)
-		}
+		tc, _ = CreateTemplateCache()
 	}
 
-	temp, ok := templatesCache[templ]
-
+	t, ok := tc[tmpl]
 	if !ok {
-		log.Fatal("Error loading cache")
+		log.Fatal("Could not get template from template cache")
 	}
 
 	buf := new(bytes.Buffer)
 
-	templData = AddDefaultData(templData, request)
+	td = AddDefaultData(td, r)
 
-	_ = temp.Execute(buf, templData)
+	_ = t.Execute(buf, td)
 
-	_, err = buf.WriteTo(response)
-
+	_, err := buf.WriteTo(w)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("error writing template to browser", err)
 	}
+
 }
 
-func AddDefaultData(td *model.TemplateData, r *http.Request) *model.TemplateData {
-	td.CSRFToken = nosurf.Token(r)
-
-	return td
-}
-
+// CreateTemplateCache creates a template cache as a map
 func CreateTemplateCache() (map[string]*template.Template, error) {
-	cache := map[string]*template.Template{}
 
-	pages, err := filepath.Glob("./templates/*.page.html")
+	myCache := map[string]*template.Template{}
 
+	pages, err := filepath.Glob("./templates/*.page.tmpl")
 	if err != nil {
-		return cache, err
+		return myCache, err
 	}
 
 	for _, page := range pages {
 		name := filepath.Base(page)
-
-		templs, err := template.New(name).ParseFiles(page)
-
+		ts, err := template.New(name).Funcs(functions).ParseFiles(page)
 		if err != nil {
-			return cache, err
+			return myCache, err
 		}
 
-		matches, err := filepath.Glob("./templates/*.layout.html")
-
+		matches, err := filepath.Glob("./templates/*.layout.tmpl")
 		if err != nil {
-			return cache, err
+			return myCache, err
 		}
 
 		if len(matches) > 0 {
-			templs, err = templs.ParseGlob("./templates/*.layout.html")
-
+			ts, err = ts.ParseGlob("./templates/*.layout.tmpl")
 			if err != nil {
-				return cache, err
+				return myCache, err
 			}
 		}
 
-		cache[name] = templs
+		myCache[name] = ts
 	}
 
-	return cache, nil
+	return myCache, nil
 }
